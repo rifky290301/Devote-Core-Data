@@ -34,8 +34,11 @@ struct PersistenceController {
   static let preview: PersistenceController = {
     let result = PersistenceController(inMemory: true)
     let viewContext = result.container.viewContext
-    for _ in 0..<10 {
+    for i in 0..<5 {
       let newItem = Item(context: viewContext)
+      newItem.task = "Task \(i)"
+      newItem.completion = false
+      newItem.id = UUID()
       newItem.timestamp = Date()
     }
     do {

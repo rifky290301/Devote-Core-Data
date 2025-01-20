@@ -11,12 +11,19 @@ import CoreData
 struct ContentView: View {
   // MARK: - PROPERTY
   
+  @State var task: String = ""
+  
+  private var isButtonDisabled: Bool {
+    task.isEmpty
+  }
+  
   // FETCHING DATA
   @Environment(\.managedObjectContext) private var viewContext
   
   @FetchRequest(
     sortDescriptors: [NSSortDescriptor(keyPath: \Item.timestamp, ascending: true)],
-    animation: .default)
+    animation: .default
+  )
   private var items: FetchedResults<Item>
   
   // MARK: - FUNCTION
@@ -24,13 +31,20 @@ struct ContentView: View {
     withAnimation {
       let newItem = Item(context: viewContext)
       newItem.timestamp = Date()
+      newItem.task = task
+      newItem.completion = false
+      newItem.id = UUID()
       
       do {
-        try viewContext.save()
+        if !task.isEmpty {
+          try viewContext.save()
+        }
       } catch {
         let nsError = error as NSError
         fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
       }
+      task = ""
+      hideKeyboard()
     }
   }
   
@@ -46,34 +60,85 @@ struct ContentView: View {
       }
     }
   }
-
+  
   // MARK: - BODY
   var body: some View {
     NavigationView {
-      List {
-        ForEach(items) { item in
-          NavigationLink {
-            Text("Item at \(item.timestamp!, formatter: itemFormatter)")
-          } label: {
-            Text(item.timestamp!, formatter: itemFormatter)
+      ZStack{
+        VStack{
+          VStack(spacing: 16){
+            TextField("Add a task", text: $task)
+              .padding()
+              .background(
+                Color(UIColor.systemGray6)
+              )
+              .clipShape(RoundedRectangle(cornerRadius:10))
+            
+            Button(action: {
+              addItem()
+            }, label: {
+              Spacer()
+              Text("SAVE")
+              Spacer()
+            })
+            .disabled(isButtonDisabled)
+            .padding()
+            .font(.headline)
+            .foregroundStyle(.white)
+            .background(isButtonDisabled ? Color.gray : Color.pink)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
           }
-        }
-        .onDelete(perform: deleteItems)
+          .padding()
+          
+          List {
+            ForEach(items) { item in
+              NavigationLink {
+                VStack(alignment: .leading){
+                  Text(item.task ?? "")
+                    .font(.headline)
+                    .fontWeight(.bold)
+                  
+                  Text("Item at \(item.timestamp!, formatter: itemFormatter)")
+                    .font(.footnote)
+                    .foregroundStyle(.gray)
+                }
+              } label: {
+                VStack(alignment: .leading, content: {
+                  Text(item.task ?? "")
+                    .font(.headline)
+                    .fontWeight(.bold)
+                  
+                  Text(item.timestamp!, formatter: itemFormatter)
+                })
+              }
+            }
+            .onDelete(perform: deleteItems)
+          }
+          .listStyle(InsetGroupedListStyle())
+          .shadow(color: Color(red: 0, green: 0, blue: 0, opacity: 0.3), radius: 12)
+          .padding(.vertical, 0)
+          .frame(maxWidth: 640)
+        } //: VSTACK
+      } //: ZSTACK
+      .onAppear(){
+        UITableView.appearance().backgroundColor = UIColor.clear
       }
+      .navigationTitle("Daily Tasks")
       .toolbar {
-        ToolbarItem(placement: .navigationBarTrailing) {
+        ToolbarItem(placement: .topBarTrailing) {
           EditButton()
         }
-        ToolbarItem {
-          Button(action: addItem) {
-            Label("Add Item", systemImage: "plus")
-          }
-        }
-      }
-      Text("Select an item")
-    }
+      } //: TOOLBAR
+      .background(
+        BackgroundImageView()
+      )
+      .background(
+        backgroundGradient.ignoresSafeArea(.all)
+      )
+    } //: NAVIGATION
+    .navigationViewStyle(StackNavigationViewStyle())
   }
-
+  
 }
 
 #Preview {
